@@ -336,3 +336,4 @@ ASALocalRun/
 # PlatformIO
 .pio
 .DS_Store
+.vscode
