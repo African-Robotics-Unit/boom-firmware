@@ -1,0 +1,111 @@
+"""
+Class to read and log data from the teensy connected to the boom.
+"""
+
+from typing import List, NamedTuple
+import csv
+import serial
+from serial.tools.list_ports import comports
+import struct
+import time
+from threading import Thread
+
+
+class Packet(NamedTuple):
+    time: float
+    x: float
+    y: float
+    dx: float
+    dy: float
+
+
+HEADER = bytes([0xAA, 0x55])
+DATAFMT = '<4f'
+
+
+SENSOR_PARAMS = {
+    'baudrate': 1_000_000,
+    'stopbits': serial.STOPBITS_ONE,
+    'parity': serial.PARITY_NONE,
+    'bytesize': serial.EIGHTBITS,
+}
+
+
+class BoomLogger:
+    def __init__(self):
+        print('connecting to Teensy... ', end='')
+        devices = [dev for dev in comports() if dev.description == 'USB Serial']
+        if len(devices) == 0:
+            raise RuntimeError("\nCouldn't find Teensy")
+        elif len(devices) == 1:
+            dev = devices[0]
+        else:
+            raise RuntimeError(f'\nFound more than one Teensy: {devices}')
+        self.serial = serial.Serial(dev.device, **SENSOR_PARAMS)
+        print('done')
+
+        self.thread = None
+        self.isRunning = True
+        self.receivingData = False
+        self.data: List[Packet] = []
+
+    def __read(self) -> Packet:
+        self.serial.reset_input_buffer()
+        self.serial.read_until(HEADER)
+        data_bytes = self.serial.read(struct.calcsize(DATAFMT))
+        x, y, dx, dy = struct.unpack(DATAFMT, data_bytes)
+        return Packet(time.time(), x, y, dx, dy)
+
+    '''
+    Starts logging the data from the boom encoders at about 1kHz.
+    Logging is executed on a background thread, but this function will block the current thread until logging begins.
+    The boom only start sending data once the vertical axis has been indexed.
+    '''
+    def start(self):
+        if self.thread == None:
+            self.thread = Thread(target=self.__backgroundThread)
+            self.thread.start()
+            # Block till we start receiving values
+            while not self.receivingData:
+                time.sleep(0.1)
+        else:
+            print('Thread already allocated')
+
+    # Runs on a separate thread for reading serial data
+    def __backgroundThread(self):
+        time.sleep(0.1) # wait a bit before starting
+        while (self.isRunning):
+            packet = self.__read()
+            self.data.append(packet)
+            self.receivingData = True
+    
+    '''
+    Stops logging data from the boom and saves the logged data to a CSV file.
+    '''
+    def stop(self):
+        self.isRunning = False
+        self.thread.join()
+        self.serial.close()
+        print('Logging stopped...')
+        # write to csv
+        print('Writing data to CSV file...')
+        with open('boom-data.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['time', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]'])
+            writer.writerows(self.data)
+
+
+
+if __name__ == '__main__':
+
+    logger = BoomLogger()
+    logger.start()
+
+    while True:
+        try:
+            print(logger.data[-1].dy)
+            time.sleep(0.1)
+        except KeyboardInterrupt:
+            break
+    
+    logger.stop()
