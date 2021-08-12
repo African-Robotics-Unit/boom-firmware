@@ -2,7 +2,6 @@
 #include <Encoder.h>
 
 
-
 Encoder pitch(1, 0);
 Encoder yaw(11, 10);
 
@@ -13,7 +12,8 @@ const byte ledPin = 13;
 
 volatile bool pitchIndexFound = false;
 
-const float boomLength = 2.48; // pivot to pivot distance [m]
+const float yawRadius = 2.558; // pivot to end mounting distance [m]
+const float pitchRadius = 2.475; // pivot to pivot distance [m]
 const unsigned int gearRatio = 4.0;
 const unsigned int cpr = 4000; // encoder counts per revolution
 const unsigned int sampleFrequency = 1000; //Hz
@@ -33,9 +33,10 @@ float dy = 0; // boom end vertical speed [m/s]
 // function declarations
 void send(float);
 void pitchIndexInterrupt();
-float countsToPosition(int);
+float countsToRadians(int);
 void calculatePosition();
 void calculateSpeed();
+
 
 void setup() {
   pinMode(ledPin, OUTPUT);
@@ -75,27 +76,28 @@ void send(float data) {
 	Serial.write((uint8_t *)&data, sizeof(data));
 }
 
+// Interrupt handler for when the pitch encoder index is found
 void pitchIndexInterrupt() {
   pitchIndexFound = true;
-  pitch.write(671); // update this to recalibrate the boom
+  pitch.write(671); // update this to recalibrate the boom height
   digitalWrite(ledPin, HIGH);
   detachInterrupt(digitalPinToInterrupt(pitchIndexPin));
 }
 
-// convert encoder counts to boom end position
-float countsToPosition(int counts) {
-  return (float(counts) / float(cpr * gearRatio)) * 2.0*PI * boomLength;
+// converts encoder counts to an angle in radians
+float countsToRadians(int counts) {
+  return (float(counts) / float(cpr * gearRatio)) * 2.0*PI;
 }
 
 void calculatePosition() {
-  x = countsToPosition(yaw.read());
-  y = countsToPosition(pitch.read());
+  x = countsToRadians(yaw.read()) * yawRadius;
+  y = countsToRadians(pitch.read()) * pitchRadius;
 }
 
 void calculateSpeed() {
   //position difference over time
-  dx = countsToPosition(yaw.read() - prevYawValue) * speedUpdateFrequency;
-  dy = countsToPosition(pitch.read() - prevPitchValue) * speedUpdateFrequency;
+  dx = countsToRadians(yaw.read() - prevYawValue) * yawRadius * speedUpdateFrequency;
+  dy = countsToRadians(pitch.read() - prevPitchValue) * pitchRadius * speedUpdateFrequency;
   prevYawValue = yaw.read();
   prevPitchValue = pitch.read();
 }
