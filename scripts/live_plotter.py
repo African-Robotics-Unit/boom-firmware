@@ -1,20 +1,21 @@
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from scripts.recieve_comms import BoomLogger
+from recieve_comms import BoomLogger
+from collections import deque
 import numpy as np
 
 
 if __name__ == '__main__':
     logger = BoomLogger()
-    logger.startReadThread()
+    logger.start()
 
     fig, ax = plt.subplots()
-    xdata, ydata = [], []
+    xdata, ydata = deque(maxlen=5000), deque(maxlen=5000)
     line, = plt.plot([], [])
 
     def init():
-        ax.set_xlim(-250, 250)
-        ax.set_ylim(-250, 250)
+        ax.set_xlim(-2, 2)
+        ax.set_ylim(0, 2)
         return line,
 
     # animation function. This is called sequentially
@@ -33,5 +34,5 @@ if __name__ == '__main__':
     diff = np.diff(time)
     print(np.mean(diff))
 
-    logger.disconnect()
+    logger.stop()
     
