@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 # TODO
 # - make the plot a 3x3 grid
+# - estimate velocity with dx/dt to check PLL estimator
 
 pll_bandwidth = 100 # rad/s
 

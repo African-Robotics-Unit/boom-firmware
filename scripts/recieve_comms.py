@@ -1,5 +1,5 @@
 """
-Class to read and log data from the teensy connected to the boom.
+Class to read and log data from the teensy connected to the boom sensors.
 """
 
 from typing import List, NamedTuple
@@ -19,10 +19,13 @@ class Packet(NamedTuple):
     y: float
     dx: float
     dy: float
+    ddx: float
+    ddy: float
+    ddz: float
 
 
 HEADER = bytes([0xAA, 0x55])
-DATAFMT = '<2i4f'
+DATAFMT = '<2i7f'
 
 
 SENSOR_PARAMS = {
@@ -55,8 +58,8 @@ class BoomLogger:
         self.serial.reset_input_buffer()
         self.serial.read_until(HEADER)
         data_bytes = self.serial.read(struct.calcsize(DATAFMT))
-        yaw, pitch, x, y, dx, dy = struct.unpack(DATAFMT, data_bytes)
-        return Packet(time.time(), yaw, pitch, x, y, dx, dy)
+        yaw, pitch, x, y, dx, dy, ddx, ddy, ddz = struct.unpack(DATAFMT, data_bytes)
+        return Packet(time.time(), yaw, pitch, x, y, dx, dy, ddx, ddy, ddz)
 
     '''
     Starts logging the data from the boom encoders at about 1kHz.
@@ -93,7 +96,7 @@ class BoomLogger:
         print('Writing data to CSV file...')
         with open(log_filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]'])
+            writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[m/s^2]', 'ddy[m/s^2]', 'ddz[m/s^2]'])
             writer.writerows(self.data)
 
 
@@ -105,9 +108,9 @@ if __name__ == '__main__':
 
     while True:
         try:
-            print(logger.data[-1].x)
-            time.sleep(0.1)
+            print(logger.data[-1].ddx)
+            time.sleep(0.2)
         except KeyboardInterrupt:
             break
     
-    logger.stop(log_filename='pll_data/pll-100k-10.csv')
+    logger.stop(log_filename='boom-log-data.csv')

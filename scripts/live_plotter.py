@@ -10,7 +10,7 @@ if __name__ == '__main__':
     logger.start()
 
     fig, ax = plt.subplots()
-    xdata, ydata = deque(maxlen=5000), deque(maxlen=5000)
+    xdata, ydata = deque(maxlen=5000), deque(maxlen=5000) # only store about 5s of data
     line, = plt.plot([], [])
 
     def init():
