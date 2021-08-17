@@ -96,7 +96,7 @@ class BoomLogger:
         print('Writing data to CSV file...')
         with open(log_filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[m/s^2]', 'ddy[m/s^2]', 'ddz[m/s^2]'])
+            writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[g]', 'ddy[g]', 'ddz[g]'])
             writer.writerows(self.data)
 
 
@@ -108,9 +108,9 @@ if __name__ == '__main__':
 
     while True:
         try:
-            print(logger.data[-1].ddx)
-            time.sleep(0.2)
+            print(f'{logger.data[-1].y:.3f}')
+            time.sleep(0.1)
         except KeyboardInterrupt:
             break
     
-    logger.stop(log_filename='boom-log-data.csv')
+    logger.stop(log_filename='boom-log.csv')

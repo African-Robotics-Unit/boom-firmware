@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 pll_bandwidth = 100 # rad/s
 
-boom_data = pd.read_csv(f'pll_data/pll-10k-{pll_bandwidth}.csv')
+boom_data = pd.read_csv(f'pll_data/10k-{pll_bandwidth}.csv')
 
 boom_data['time[epoch]'] -= boom_data['time[epoch]'][0]
 
@@ -16,37 +16,34 @@ dt = boom_data['time[epoch]'].diff()
 print(f'Average sample time of {1/dt.mean()} Hz')
 
 # convert encoder counts to position
-boom_data['yaw[counts]'] = boom_data['yaw[counts]'].apply(lambda count: (count / (4000*4)) * 2*np.pi * 2.558)
-boom_data['pitch[counts]'] = boom_data['pitch[counts]'].apply(lambda count: (count / (4000*4)) * 2*np.pi * 2.475)
+boom_data['yaw[counts]'] = boom_data['yaw[counts]'].apply(lambda count: (count / (4096*4)) * 2*np.pi * 2.558)
+boom_data['pitch[counts]'] = boom_data['pitch[counts]'].apply(lambda count: (count / (4096*4)) * 2*np.pi * 2.475)
+
+fig, ax = plt.subplots(1, 3)
+fig.suptitle(f'PLL {pll_bandwidth} rad/s bandwidth comparison')
 
 
-fig1, ax1 = plt.subplots()
-ax1.set_title(f'Boom PLL position estimate\n{pll_bandwidth} rad/s bandwidth')
-ax1.plot(boom_data['time[epoch]'], boom_data['pitch[counts]'], label='y actual')
-ax1.plot(boom_data['time[epoch]'], boom_data['yaw[counts]'], label='x actual')
-ax1.plot(boom_data['time[epoch]'], boom_data['y[m]'], label='y estimate')
-ax1.plot(boom_data['time[epoch]'], boom_data['x[m]'], label='x estimate')
-ax1.set(xlabel='time [s]', ylabel='position [m]')
-ax1.legend()
+ax[0].set_title(f'Boom position')
+ax[0].plot(boom_data['time[epoch]'], boom_data['pitch[counts]'], label='y actual')
+ax[0].plot(boom_data['time[epoch]'], boom_data['yaw[counts]'], label='x actual')
+ax[0].plot(boom_data['time[epoch]'], boom_data['y[m]'], label='y estimate')
+ax[0].plot(boom_data['time[epoch]'], boom_data['x[m]'], label='x estimate')
+ax[0].set(xlabel='time [s]', ylabel='position [m]')
+ax[0].legend()
+
+
+ax[1].set_title(f'Position error')
+ax[1].plot(boom_data['time[epoch]'], abs(boom_data['pitch[counts]'] - boom_data['y[m]']), label='y error')
+ax[1].plot(boom_data['time[epoch]'], abs(boom_data['yaw[counts]'] - boom_data['x[m]']), label='x error')
+ax[1].set(xlabel='time [s]', ylabel='|error| [m]')
+ax[1].legend()
+
+
+ax[2].set_title(f'Velocity estimate')
+ax[2].plot(boom_data['time[epoch]'], boom_data['dy[m/s]'], label='vertical')
+ax[2].plot(boom_data['time[epoch]'], boom_data['dx[m/s]'], label='horizontal')
+ax[2].set(xlabel='time [s]', ylabel='Speed [m/s]')
+ax[2].legend()
+
 plt.tight_layout()
-
-
-fig2, ax2 = plt.subplots()
-ax2.set_title(f'PLL position estimate error\n{pll_bandwidth} rad/s bandwidth')
-ax2.plot(boom_data['time[epoch]'], abs(boom_data['pitch[counts]'] - boom_data['y[m]']), label='y error')
-ax2.plot(boom_data['time[epoch]'], abs(boom_data['yaw[counts]'] - boom_data['x[m]'])**2, label='x error')
-ax2.set(xlabel='time [s]', ylabel='|error| [m]')
-ax2.legend()
-plt.tight_layout()
-
-
-fig5, ax5 = plt.subplots()
-ax5.set_title(f'Hopper PLL velocity estimate\n{pll_bandwidth} rad/s bandwidth')
-ax5.plot(boom_data['time[epoch]'], boom_data['dy[m/s]'], label='vertical')
-ax5.plot(boom_data['time[epoch]'], boom_data['dx[m/s]'], label='horizontal')
-ax5.set(xlabel='time [s]', ylabel='Speed [m/s]')
-ax5.legend()
-plt.tight_layout()
-
-
 plt.show()

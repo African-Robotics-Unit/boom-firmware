@@ -1,8 +1,7 @@
 #include <Arduino.h>
 #include <Encoder.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BNO055.h>
+#include <SparkFunLSM9DS1.h>
 
 
 Encoder pitch(1, 0);
@@ -17,10 +16,9 @@ volatile bool pitchIndexFound = false;
 
 const float yawRadius = 2.558; // pivot to end mounting distance [m]
 const float pitchRadius = 2.475; // pivot to pivot distance [m]
-const uint16_t pitchIndexPos = 671;
+const uint16_t pitchIndexPos = 744;
 const uint8_t gearRatio = 4;
 const uint16_t CPR = 4096; // encoder counts per revolution
-const uint16_t serialFreq = 1000; // [Hz] This might need to be lower
 const uint32_t laptopBaud = 1000000;
 
 // PLL estimator stuff
@@ -37,7 +35,7 @@ float yaw_vel_estimate = 0; // [counts/s]
 uint32_t t = 0; // time variable for managing main loop frequency
 elapsedMicros loopTime; // elapsed loop time in microseconds
 
-Adafruit_BNO055 bno = Adafruit_BNO055(-1, 0x28);
+LSM9DS1 IMU;
 
 // function declarations
 void sendFloat(float);
@@ -58,22 +56,22 @@ void setup() {
 	Serial.print("Teensy comms initiated");
   // setup encoders
   yaw.write(0);
-  // while (!pitchIndexFound); // wait for pitch index
+  while (!pitchIndexFound); // wait for pitch index
   // start PLL estimator
   pllTimer.begin(pllLoop, 1E6f / pllFreq);
   pllTimer.priority(0); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
   // setup IMU
-  if(!bno.begin()) {
-    Serial.print("Could not connect to BNO055 IMU");
-    while(1);
+  Wire.begin();
+  Wire.setClock(400000); // 400kHz I2C
+  if (!IMU.begin()) {
+    Serial.println("Failed to initialize IMU");
+    while (1);
   }
-  bno.setExtCrystalUse(true);
-  Wire.setClock(3200000); // 32kHz high speed mode
 }
 
 // all serial communication must be done inside the main loop
 void loop() {
-  if (loopTime >= (100)) { // loop must last more than 100us
+  if (loopTime >= (1000)) { // loop must execute at 1kHz
     loopTime = 0;
     // send header
     Serial.write((uint8_t)0xAA);
@@ -84,9 +82,9 @@ void loop() {
     float dx = countsToRadians(yaw_vel_estimate) * yawRadius; // boom end horizontal speed [m/s]
     float dy = countsToRadians(pitch_vel_estimate) * pitchRadius; // boom end vertical speed [m/s]
 
-    // get IMU data
-    imu::Vector<3> accel = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER); // [m/s^2]
-
+    if (IMU.accelAvailable()) {
+      IMU.readAccel();
+    }
     // send data
     sendInt(yaw.read());
     sendInt(pitch.read());
@@ -94,9 +92,9 @@ void loop() {
     sendFloat(y);
     sendFloat(dx);
     sendFloat(dy);
-    sendFloat(accel.x());
-    sendFloat(accel.y());
-    sendFloat(accel.z());
+    sendFloat(IMU.calcAccel(IMU.ax)); // g's
+    sendFloat(IMU.calcAccel(IMU.ay)); // g's
+    sendFloat(IMU.calcAccel(IMU.az)); // g's
   }
 }
 
