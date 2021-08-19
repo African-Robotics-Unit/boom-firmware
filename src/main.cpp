@@ -3,6 +3,9 @@
 #include <Wire.h>
 #include <SparkFunLSM9DS1.h>
 
+// TODO
+// - accel calibration
+// - log temperature - no coversion to °C in the datasheet
 
 Encoder pitch(1, 0);
 Encoder yaw(11, 10);
@@ -32,10 +35,9 @@ float pitch_vel_estimate = 0; // [counts/s]
 float yaw_pos_estimate = 0; // [counts]
 float yaw_vel_estimate = 0; // [counts/s]
 
-uint32_t t = 0; // time variable for managing main loop frequency
 elapsedMicros loopTime; // elapsed loop time in microseconds
 
-LSM9DS1 IMU;
+LSM9DS1 imu;
 
 // function declarations
 void sendFloat(float);
@@ -43,6 +45,7 @@ void sendInt(uint32_t);
 void pitchIndexInterrupt();
 void pllLoop();
 float countsToRadians(float);
+void configIMU();
 
 
 void setup() {
@@ -55,7 +58,6 @@ void setup() {
 	Serial.begin(laptopBaud);
 	Serial.print("Teensy comms initiated");
   // setup encoders
-  yaw.write(0);
   while (!pitchIndexFound); // wait for pitch index
   // start PLL estimator
   pllTimer.begin(pllLoop, 1E6f / pllFreq);
@@ -63,10 +65,11 @@ void setup() {
   // setup IMU
   Wire.begin();
   Wire.setClock(400000); // 400kHz I2C
-  if (!IMU.begin()) {
+  if (!imu.begin()) {
     Serial.println("Failed to initialize IMU");
     while (1);
   }
+  configIMU();
 }
 
 // all serial communication must be done inside the main loop
@@ -82,9 +85,8 @@ void loop() {
     float dx = countsToRadians(yaw_vel_estimate) * yawRadius; // boom end horizontal speed [m/s]
     float dy = countsToRadians(pitch_vel_estimate) * pitchRadius; // boom end vertical speed [m/s]
 
-    if (IMU.accelAvailable()) {
-      IMU.readAccel();
-    }
+    if (imu.accelAvailable()) { imu.readAccel(); }
+    if (imu.tempAvailable()) { imu.readTemp(); }
     // send data
     sendInt(yaw.read());
     sendInt(pitch.read());
@@ -92,9 +94,10 @@ void loop() {
     sendFloat(y);
     sendFloat(dx);
     sendFloat(dy);
-    sendFloat(IMU.calcAccel(IMU.ax)); // g's
-    sendFloat(IMU.calcAccel(IMU.ay)); // g's
-    sendFloat(IMU.calcAccel(IMU.az)); // g's
+    sendFloat(imu.calcAccel(imu.ax)); // g's
+    sendFloat(imu.calcAccel(imu.ay)); // g's
+    sendFloat(imu.calcAccel(imu.az)); // g's
+    sendFloat(imu.temperature); //
   }
 }
 
@@ -109,9 +112,10 @@ void sendInt(uint32_t data) {
 	Serial.write((uint8_t *)&data, sizeof(data));
 }
 
-// Interrupt handler for when the pitch encoder index is found
+// Interrupt handler for when the pitch encoder index is detected
 void pitchIndexInterrupt() {
   pitchIndexFound = true;
+  yaw.write(0);
   pitch.write(pitchIndexPos);
   digitalWrite(ledPin, HIGH);
   detachInterrupt(digitalPinToInterrupt(pitchIndexPin));
@@ -137,4 +141,19 @@ void pllLoop() {
   pitch_vel_estimate += pll_period * pll_ki * pitch_delta_pos;
   yaw_pos_estimate += pll_period * pll_kp * yaw_delta_pos;
   yaw_vel_estimate += pll_period * pll_ki * yaw_delta_pos;
+}
+
+// Configures the settings on the IMU
+void configIMU() {
+  // enable or disable sensors
+  imu.settings.accel.enabled = true;
+  imu.settings.gyro.enabled = false;
+  imu.settings.mag.enabled = false;
+  imu.settings.temp.enabled = true;
+  // configure accelerometer
+  imu.settings.accel.scale = 8; // 8g's
+  imu.settings.accel.sampleRate = 6; // 952 Hz
+  imu.settings.accel.bandwidth = 0; // 0 = 408 Hz, 1 = 211 Hz, 2 = 105 Hz, 3 = 50 Hz
+  imu.settings.accel.highResEnable = true;
+  imu.settings.accel.highResBandwidth = 0; // 0 = ODR/50, 1 = ODR/100, 2 = ODR/9, 3 = ODR/400
 }
