@@ -3,12 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # TODO
-# - make the plot a 3x3 grid
 # - estimate velocity with dx/dt to check PLL estimator
 
 pll_bandwidth = 100 # rad/s
 
-boom_data = pd.read_csv(f'pll_data/10k-{pll_bandwidth}.csv')
+boom_data = pd.read_csv(f'pll_data/100k-{pll_bandwidth}.csv')
 
 boom_data['time[epoch]'] -= boom_data['time[epoch]'][0]
 
@@ -19,11 +18,11 @@ print(f'Average sample time of {1/dt.mean()} Hz')
 boom_data['yaw[counts]'] = boom_data['yaw[counts]'].apply(lambda count: (count / (4096*4)) * 2*np.pi * 2.558)
 boom_data['pitch[counts]'] = boom_data['pitch[counts]'].apply(lambda count: (count / (4096*4)) * 2*np.pi * 2.475)
 
-fig, ax = plt.subplots(1, 3)
-fig.suptitle(f'PLL {pll_bandwidth} rad/s bandwidth comparison')
+fig, ax = plt.subplots(3)
+fig.suptitle(f'PLL {pll_bandwidth} rad/s bandwidth')
 
 
-ax[0].set_title(f'Boom position')
+ax[0].set_title(f'Position')
 ax[0].plot(boom_data['time[epoch]'], boom_data['pitch[counts]'], label='y actual')
 ax[0].plot(boom_data['time[epoch]'], boom_data['yaw[counts]'], label='x actual')
 ax[0].plot(boom_data['time[epoch]'], boom_data['y[m]'], label='y estimate')
