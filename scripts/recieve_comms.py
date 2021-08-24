@@ -87,14 +87,14 @@ class BoomLogger:
     '''
     Stops logging data from the boom and saves the logged data to a CSV file.
     '''
-    def stop(self, log_filename='boom-data.csv'):
+    def stop(self, filename='boom-data.csv'):
         self.isRunning = False
         self.thread.join()
         self.serial.close()
         print('Logging stopped...')
         # write to csv
         print('Writing data to CSV file...')
-        with open(log_filename, 'w', newline='') as csvfile:
+        with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[g]', 'ddy[g]', 'ddz[g]'])
             writer.writerows(self.data)
