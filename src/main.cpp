@@ -57,6 +57,7 @@ void setup() {
   // setup IMU
   Wire.begin();
   Wire.setClock(400000); // 400kHz I2C
+  imu.configure();
   if (!imu.begin()) {
     Serial.println("Failed to initialize IMU");
     while (1);
@@ -65,7 +66,6 @@ void setup() {
   // turn LED on while calibrating IMU
   digitalWrite(ledPin, HIGH);
   imu.customCalibrate(true);
-  imu.configure();
   digitalWrite(ledPin, LOW);
   // setup encoders
   while (!pitchIndexFound); // wait for pitch index
