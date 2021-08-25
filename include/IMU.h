@@ -37,4 +37,18 @@ class IMU: public LSM9DS1 {
         
         if (autoCalc) _autoCalc = true;
     }
+    // configure the IMU settings
+    void configure() {
+        // enable or disable sensors
+        settings.accel.enabled = true;
+        settings.gyro.enabled = false;
+        settings.mag.enabled = false;
+        settings.temp.enabled = true;
+        // configure accelerometer
+        settings.accel.scale = 8; // 8g's
+        settings.accel.sampleRate = 6; // 952 Hz
+        settings.accel.bandwidth = 0; // 0 = 408 Hz, 1 = 211 Hz, 2 = 105 Hz, 3 = 50 Hz
+        settings.accel.highResEnable = true;
+        settings.accel.highResBandwidth = 0; // 0 = ODR/50, 1 = ODR/100, 2 = ODR/9, 3 = ODR/400
+    }
 };

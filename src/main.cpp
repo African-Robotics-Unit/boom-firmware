@@ -4,7 +4,7 @@
 #include <IMU.h>
 
 // TODO
-// - log temperature - no coversion to °C in the datasheet
+// - work out temperature conversion
 
 Encoder pitch(1, 0);
 Encoder yaw(11, 10);
@@ -43,7 +43,6 @@ void sendInt(uint32_t);
 void pitchIndexInterrupt();
 void pllLoop();
 float countsToRadians(float);
-void configIMU();
 
 
 void setup() {
@@ -62,11 +61,11 @@ void setup() {
     Serial.println("Failed to initialize IMU");
     while (1);
   }
-  configIMU();
   // need to make sure boom is not moving
   // turn LED on while calibrating IMU
   digitalWrite(ledPin, HIGH);
   imu.customCalibrate(true);
+  imu.configure();
   digitalWrite(ledPin, LOW);
   // setup encoders
   while (!pitchIndexFound); // wait for pitch index
@@ -144,19 +143,4 @@ void pllLoop() {
   pitch_vel_estimate += pll_period * pll_ki * pitch_delta_pos;
   yaw_pos_estimate += pll_period * pll_kp * yaw_delta_pos;
   yaw_vel_estimate += pll_period * pll_ki * yaw_delta_pos;
-}
-
-// Configures the settings on the IMU
-void configIMU() {
-  // enable or disable sensors
-  imu.settings.accel.enabled = true;
-  imu.settings.gyro.enabled = false;
-  imu.settings.mag.enabled = false;
-  imu.settings.temp.enabled = true;
-  // configure accelerometer
-  imu.settings.accel.scale = 8; // 8g's
-  imu.settings.accel.sampleRate = 6; // 952 Hz
-  imu.settings.accel.bandwidth = 0; // 0 = 408 Hz, 1 = 211 Hz, 2 = 105 Hz, 3 = 50 Hz
-  imu.settings.accel.highResEnable = true;
-  imu.settings.accel.highResBandwidth = 0; // 0 = ODR/50, 1 = ODR/100, 2 = ODR/9, 3 = ODR/400
 }
