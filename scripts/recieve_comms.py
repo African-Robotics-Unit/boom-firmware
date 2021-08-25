@@ -26,7 +26,7 @@ class Packet(NamedTuple):
 
 
 HEADER = bytes([0xAA, 0x55])
-DATAFMT = '<2i7f'
+DATAFMT = '<2i7fi'
 
 
 SENSOR_PARAMS = {
@@ -114,4 +114,4 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             break
     
-    logger.stop(log_filename='boom-log.csv')
+    logger.stop(filename='boom-log.csv')

@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-
 def plot(filename):
 
     data = pd.read_csv(filename)
@@ -12,7 +11,6 @@ def plot(filename):
 
     data['dt[us]'] = data['time[epoch]'].diff() * 1e6
     avg_freq = 1e6 / data['dt[us]'].mean()
-
 
     fig, ax = plt.subplots(3)
     fig.suptitle(f'Boom data at {avg_freq:.1f}kHz')
@@ -38,3 +36,7 @@ def plot(filename):
 
     plt.tight_layout()
     plt.show()
+
+
+if __name__ == '__main__':
+    plot(filename='boom-log.csv')

@@ -1,10 +1,9 @@
 #include <Arduino.h>
 #include <Encoder.h>
 #include <Wire.h>
-#include <SparkFunLSM9DS1.h>
+#include <IMU.h>
 
 // TODO
-// - accel calibration
 // - log temperature - no coversion to °C in the datasheet
 
 Encoder pitch(1, 0);
@@ -36,8 +35,7 @@ float yaw_pos_estimate = 0; // [counts]
 float yaw_vel_estimate = 0; // [counts/s]
 
 elapsedMicros loopTime; // elapsed loop time in microseconds
-
-LSM9DS1 imu;
+IMU imu;
 
 // function declarations
 void sendFloat(float);
@@ -68,7 +66,7 @@ void setup() {
   // need to make sure boom is not moving
   // turn LED on while calibrating IMU
   digitalWrite(ledPin, HIGH);
-  imu.calibrate();
+  imu.customCalibrate(true);
   digitalWrite(ledPin, LOW);
   // setup encoders
   while (!pitchIndexFound); // wait for pitch index
@@ -161,42 +159,4 @@ void configIMU() {
   imu.settings.accel.bandwidth = 0; // 0 = 408 Hz, 1 = 211 Hz, 2 = 105 Hz, 3 = 50 Hz
   imu.settings.accel.highResEnable = true;
   imu.settings.accel.highResBandwidth = 0; // 0 = ODR/50, 1 = ODR/100, 2 = ODR/9, 3 = ODR/400
-}
-
-
-// Redeclaring calibrate function to rather ignore gravity
-void LSM9DS1::calibrate(bool autoCalc)
-{
-	uint8_t samples = 0;
-	int ii;
-	int32_t aBiasRawTemp[3] = {0, 0, 0};
-	int32_t gBiasRawTemp[3] = {0, 0, 0};
-	
-	// Turn on FIFO and set threshold to 32 samples
-	enableFIFO(true);
-	setFIFO(FIFO_THS, 0x1F);
-	while (samples < 0x1F) {
-		samples = (xgReadByte(FIFO_SRC) & 0x3F); // Read number of stored samples
-	}
-	for(ii = 0; ii < samples ; ii++) {	// Read the gyro data stored in the FIFO
-		readGyro();
-		gBiasRawTemp[0] += gx;
-		gBiasRawTemp[1] += gy;
-		gBiasRawTemp[2] += gz;
-		readAccel();
-		aBiasRawTemp[0] += ax;
-		aBiasRawTemp[1] += ay;
-		aBiasRawTemp[2] += az; // - (int16_t)(1./aRes); // Assumes sensor facing up!
-	}  
-	for (ii = 0; ii < 3; ii++) {
-		gBiasRaw[ii] = gBiasRawTemp[ii] / samples;
-		gBias[ii] = calcGyro(gBiasRaw[ii]);
-		aBiasRaw[ii] = aBiasRawTemp[ii] / samples;
-		aBias[ii] = calcAccel(aBiasRaw[ii]);
-	}
-	
-	enableFIFO(false);
-	setFIFO(FIFO_OFF, 0x00);
-	
-	if (autoCalc) _autoCalc = true;
 }
