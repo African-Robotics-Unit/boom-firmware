@@ -57,11 +57,6 @@ void setup() {
   Serial.flush();
 	Serial.begin(laptopBaud);
 	Serial.print("Teensy comms initiated");
-  // setup encoders
-  while (!pitchIndexFound); // wait for pitch index
-  // start PLL estimator
-  pllTimer.begin(pllLoop, 1E6f / pllFreq);
-  pllTimer.priority(0); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
   // setup IMU
   Wire.begin();
   Wire.setClock(400000); // 400kHz I2C
@@ -70,6 +65,16 @@ void setup() {
     while (1);
   }
   configIMU();
+  // need to make sure boom is not moving
+  // turn LED on while calibrating IMU
+  digitalWrite(ledPin, HIGH);
+  imu.calibrate();
+  digitalWrite(ledPin, LOW);
+  // setup encoders
+  while (!pitchIndexFound); // wait for pitch index
+  // start PLL estimator
+  pllTimer.begin(pllLoop, 1E6f / pllFreq);
+  pllTimer.priority(0); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
 }
 
 // all serial communication must be done inside the main loop
@@ -81,8 +86,8 @@ void loop() {
     Serial.write((uint8_t)0x55);
     // calculate boom end pos and vel
     float x = countsToRadians(yaw_pos_estimate) * yawRadius; // boom end horizontal position [m]
-    float y = countsToRadians(pitch_pos_estimate) * pitchRadius; // boom end vertical position [m]
     float dx = countsToRadians(yaw_vel_estimate) * yawRadius; // boom end horizontal speed [m/s]
+    float y = countsToRadians(pitch_pos_estimate) * pitchRadius; // boom end vertical position [m]
     float dy = countsToRadians(pitch_vel_estimate) * pitchRadius; // boom end vertical speed [m/s]
 
     if (imu.accelAvailable()) { imu.readAccel(); }
@@ -97,7 +102,7 @@ void loop() {
     sendFloat(imu.calcAccel(imu.ax)); // g's
     sendFloat(imu.calcAccel(imu.ay)); // g's
     sendFloat(imu.calcAccel(imu.az)); // g's
-    sendFloat(imu.temperature); //
+    sendInt(imu.temperature); //
   }
 }
 
@@ -156,4 +161,42 @@ void configIMU() {
   imu.settings.accel.bandwidth = 0; // 0 = 408 Hz, 1 = 211 Hz, 2 = 105 Hz, 3 = 50 Hz
   imu.settings.accel.highResEnable = true;
   imu.settings.accel.highResBandwidth = 0; // 0 = ODR/50, 1 = ODR/100, 2 = ODR/9, 3 = ODR/400
+}
+
+
+// Redeclaring calibrate function to rather ignore gravity
+void LSM9DS1::calibrate(bool autoCalc)
+{
+	uint8_t samples = 0;
+	int ii;
+	int32_t aBiasRawTemp[3] = {0, 0, 0};
+	int32_t gBiasRawTemp[3] = {0, 0, 0};
+	
+	// Turn on FIFO and set threshold to 32 samples
+	enableFIFO(true);
+	setFIFO(FIFO_THS, 0x1F);
+	while (samples < 0x1F) {
+		samples = (xgReadByte(FIFO_SRC) & 0x3F); // Read number of stored samples
+	}
+	for(ii = 0; ii < samples ; ii++) {	// Read the gyro data stored in the FIFO
+		readGyro();
+		gBiasRawTemp[0] += gx;
+		gBiasRawTemp[1] += gy;
+		gBiasRawTemp[2] += gz;
+		readAccel();
+		aBiasRawTemp[0] += ax;
+		aBiasRawTemp[1] += ay;
+		aBiasRawTemp[2] += az; // - (int16_t)(1./aRes); // Assumes sensor facing up!
+	}  
+	for (ii = 0; ii < 3; ii++) {
+		gBiasRaw[ii] = gBiasRawTemp[ii] / samples;
+		gBias[ii] = calcGyro(gBiasRaw[ii]);
+		aBiasRaw[ii] = aBiasRawTemp[ii] / samples;
+		aBias[ii] = calcAccel(aBiasRaw[ii]);
+	}
+	
+	enableFIFO(false);
+	setFIFO(FIFO_OFF, 0x00);
+	
+	if (autoCalc) _autoCalc = true;
 }

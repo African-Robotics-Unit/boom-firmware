@@ -22,6 +22,7 @@ class Packet(NamedTuple):
     ddx: float
     ddy: float
     ddz: float
+    temp: int
 
 
 HEADER = bytes([0xAA, 0x55])
@@ -58,11 +59,11 @@ class BoomLogger:
         self.serial.reset_input_buffer()
         self.serial.read_until(HEADER)
         data_bytes = self.serial.read(struct.calcsize(DATAFMT))
-        yaw, pitch, x, y, dx, dy, ddx, ddy, ddz = struct.unpack(DATAFMT, data_bytes)
-        return Packet(time.time(), yaw, pitch, x, y, dx, dy, ddx, ddy, ddz)
+        yaw, pitch, x, y, dx, dy, ddx, ddy, ddz, temp = struct.unpack(DATAFMT, data_bytes)
+        return Packet(time.time(), yaw, pitch, x, y, dx, dy, ddx, ddy, ddz, temp)
 
     '''
-    Starts logging the data from the boom encoders at about 1kHz.
+    Starts logging the data from the boom encoders at approximately 1kHz.
     Logging is executed on a background thread, but this function will block the current thread until logging begins.
     The boom only start sending data once the vertical axis has been indexed.
     '''
@@ -96,7 +97,7 @@ class BoomLogger:
         print('Writing data to CSV file...')
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[g]', 'ddy[g]', 'ddz[g]'])
+            writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[g]', 'ddy[g]', 'ddz[g]', 'temperature[C]'])
             writer.writerows(self.data)
 
 
