@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <Encoder.h>
-#include <Wire.h>
 #include <IMU.h>
 
 // TODO
@@ -54,18 +53,10 @@ void setup() {
   Serial.flush();
 	Serial.begin(laptopBaud);
 	Serial.print("Teensy comms initiated");
-  // setup IMU
-  Wire.begin();
-  Wire.setClock(400000); // 400kHz I2C
-  imu.configure();
-  if (!imu.begin()) {
-    Serial.println("Failed to initialize IMU");
-    while (1);
-  }
-  // need to make sure boom is not moving
-  // turn LED on while calibrating IMU
+  // start IMU
+  // need to make sure boom is not moving...
   digitalWrite(ledPin, HIGH);
-  imu.customCalibrate(true);
+  imu.start();
   digitalWrite(ledPin, LOW);
   // setup encoders
   while (!pitchIndexFound); // wait for pitch index
@@ -73,6 +64,7 @@ void setup() {
   pllTimer.begin(pllLoop, 1E6f / pllFreq);
   pllTimer.priority(0); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
 }
+
 
 // all serial communication must be done inside the main loop
 void loop() {
@@ -109,10 +101,12 @@ void sendFloat(float data) {
 	Serial.write((uint8_t *)&data, sizeof(data));
 }
 
+
 // Sends as sequential bytes
 void sendInt(uint32_t data) {
 	Serial.write((uint8_t *)&data, sizeof(data));
 }
+
 
 // Interrupt handler for when the pitch encoder index is detected
 void pitchIndexInterrupt() {
@@ -123,10 +117,12 @@ void pitchIndexInterrupt() {
   detachInterrupt(digitalPinToInterrupt(pitchIndexPin));
 }
 
+
 // converts encoder counts to an angle in radians
 float countsToRadians(float counts) {
   return (counts / (float)(CPR * gearRatio)) * 2.0f*PI;
 }
+
 
 // PLL loop to estimate encoder position and velocity
 // Runs at frequency defined by 'pllFreq'

@@ -1,9 +1,10 @@
 
 #include <SparkFunLSM9DS1.h>
+#include <Wire.h>
 
 class IMU: public LSM9DS1 {
     public :
-    // custom calibrate function to override one in LSM9DS1 library
+    // custom calibrate function. Modified version of the one in LSM9DS1 library
     void customCalibrate(bool autoCalc) {
         uint8_t samples = 0;
         int ii;
@@ -29,8 +30,11 @@ class IMU: public LSM9DS1 {
         setFIFO(FIFO_OFF, 0x00);
         if (autoCalc) _autoCalc = true;
     }
-    // configure the IMU settings
-    void configure() {
+
+
+    // configure settings for the IMU
+    // https://github.com/sparkfun/SparkFun_LSM9DS1_Arduino_Library/blob/master/examples/LSM9DS1_Settings/LSM9DS1_Settings.ino
+    void configureSettings() {
         // enable or disable sensors
         settings.accel.enabled = true;
         settings.gyro.enabled = false;
@@ -39,8 +43,23 @@ class IMU: public LSM9DS1 {
         // configure accelerometer
         settings.accel.scale = 4; // 4g's
         settings.accel.sampleRate = 6; // 952 Hz
-        settings.accel.bandwidth = 0; // 0 = 408 Hz, 1 = 211 Hz, 2 = 105 Hz, 3 = 50 Hz
-        settings.accel.highResEnable = false;
-        settings.accel.highResBandwidth = 0; // 0 = ODR/50, 1 = ODR/100, 2 = ODR/9, 3 = ODR/400
+        settings.accel.bandwidth = 2; // 0 = 408 Hz, 1 = 211 Hz, 2 = 105 Hz, 3 = 50 Hz
+        // settings.accel.highResEnable = false;
+        // settings.accel.highResBandwidth = 0; // 0 = ODR/50, 1 = ODR/100, 2 = ODR/9, 3 = ODR/400
+        initAccel(); // writes settings to registers
+    }
+
+
+    // runs through startup procedure
+    // configures IMU settings and calibrates the accelerometer
+    void start() {
+        Wire.begin();
+        Wire.setClock(400000); // 400kHz I2C
+        if (!begin()) {
+            Serial.println("Failed to initialize IMU");
+            while (1);
+        }
+        configureSettings();
+        customCalibrate(true);
     }
 };
