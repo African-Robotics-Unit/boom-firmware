@@ -115,7 +115,7 @@ if __name__ == '__main__':
     with BoomLogger() as logger:
         while True:
             try:
-                print(f'{logger.current.y:.3f}')
+                print(f'{logger.current.ddx:.3f}')
                 time.sleep(0.1)
             except KeyboardInterrupt:
                 break

@@ -28,8 +28,8 @@ def plot(filename):
     ax[1].legend()
 
     ax[2].set_title(f'Acceleration')
-    ax[2].plot(data['time[epoch]'], data['ddz[g]'], label='x')
-    ax[2].plot(data['time[epoch]'], data['ddx[g]'], label='y')
+    ax[2].plot(data['time[epoch]'], data['ddz[g]'], label='x IMU')
+    ax[2].plot(data['time[epoch]'], data['ddx[g]'], label='y IMU')
     # ax[2].plot(data['time[epoch]'], data['ddy[g]'], label='z')
     ax[2].set(xlabel='time [s]', ylabel="g's")
     ax[2].legend()

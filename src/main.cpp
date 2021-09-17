@@ -6,12 +6,12 @@
 // - work out temperature conversion
 
 Encoder pitch(1, 0);
-Encoder yaw(11, 10);
+Encoder yaw(7, 6);
 
 IntervalTimer pllTimer;
 
 const byte pitchIndexPin = 2;
-const byte ledPin = 13;
+const byte ledPin = 8;
 
 volatile bool pitchIndexFound = false;
 
