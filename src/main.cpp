@@ -2,6 +2,8 @@
 #include <Encoder.h>
 #include <IMU.h>
 
+#define Serial Serial
+
 // TODO
 // - work out temperature conversion
 
@@ -11,7 +13,7 @@ Encoder yaw(7, 6);
 IntervalTimer pllTimer;
 
 const byte pitchIndexPin = 2;
-const byte ledPin = 8;
+const byte ledPin = 13;
 
 volatile bool pitchIndexFound = false;
 
@@ -20,14 +22,14 @@ const float pitchRadius = 2.475; // pivot to pivot distance [m]
 const uint16_t pitchIndexPos = 744;
 const uint8_t gearRatio = 4;
 const uint16_t CPR = 4096; // encoder counts per revolution
-const uint32_t laptopBaud = 1000000;
+const uint32_t laptopBaud = 115200;
 
 // PLL estimator stuff
 // https://discourse.odriverobotics.com/t/rotor-encoder-pll-and-velocity/224
 const uint16_t pllFreq = 10000; // [Hz]
 const uint8_t pllBandwidth = 100; // [rad/s]
-const uint16_t pll_kp = 2.0f * pllBandwidth;
-const uint16_t pll_ki = 0.25f * (pll_kp * pll_kp); // critically damped
+const uint8_t pll_kp = 2.0f * pllBandwidth;
+const uint32_t pll_ki = 0.25f * (pll_kp * pll_kp); // critically damped
 float pitch_pos_estimate = 0; // [counts]
 float pitch_vel_estimate = 0; // [counts/s]
 float yaw_pos_estimate = 0; // [counts]
@@ -68,7 +70,7 @@ void setup() {
 
 // all serial communication must be done inside the main loop
 void loop() {
-  if (loopTime >= (1000)) { // loop must execute at 1kHz
+  if (loopTime >= (2000)) { // loop must execute at 500Hz
     loopTime = 0;
     // send header
     Serial.write((uint8_t)0xAA);
@@ -82,16 +84,13 @@ void loop() {
     if (imu.accelAvailable()) { imu.readAccel(); }
     if (imu.tempAvailable()) { imu.readTemp(); }
     // send data
-    sendInt(yaw.read());
-    sendInt(pitch.read());
     sendFloat(x);
     sendFloat(y);
     sendFloat(dx);
     sendFloat(dy);
     sendFloat(imu.calcAccel(imu.ax)); // g's
     sendFloat(imu.calcAccel(imu.ay)); // g's
-    sendFloat(imu.calcAccel(imu.az)); // g's
-    sendInt(imu.temperature); //
+    // sendInt(imu.temperature); //
   }
 }
 
@@ -103,7 +102,7 @@ void sendFloat(float data) {
 
 
 // Sends as sequential bytes
-void sendInt(uint32_t data) {
+void sendInt(int32_t data) {
 	Serial.write((uint8_t *)&data, sizeof(data));
 }
 

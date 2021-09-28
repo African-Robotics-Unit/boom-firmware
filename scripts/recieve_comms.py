@@ -13,20 +13,16 @@ from threading import Thread
 
 class BoomData(NamedTuple):
     time: float
-    yaw: int
-    pitch: int
     x: float
     y: float
     dx: float
     dy: float
     ddx: float
     ddy: float
-    ddz: float
-    temp: int
 
 
 HEADER = bytes([0xAA, 0x55])
-DATAFMT = '<2i7fi'
+DATAFMT = '<6f'
 
 
 SENSOR_PARAMS = {
@@ -64,8 +60,8 @@ class BoomLogger:
         self.serial.reset_input_buffer()
         self.serial.read_until(HEADER)
         data_bytes = self.serial.read(struct.calcsize(DATAFMT))
-        yaw, pitch, x, y, dx, dy, ddx, ddy, ddz, temp = struct.unpack(DATAFMT, data_bytes)
-        return BoomData(time.time(), yaw, pitch, x, y, dx, dy, ddx, ddy, ddz, temp)
+        x, y, dx, dy, ddx, ddy = struct.unpack(DATAFMT, data_bytes)
+        return BoomData(time.time(), x, y, dx, dy, ddx, ddy)
 
  
     # Runs on a separate thread for reading serial data
@@ -105,7 +101,7 @@ class BoomLogger:
         print('Writing data to CSV file...')
         with open(self.filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['time[epoch]', 'yaw[counts]', 'pitch[counts]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[g]', 'ddy[g]', 'ddz[g]', 'temperature[C]'])
+            writer.writerow(['time[epoch]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[g]', 'ddy[g]'])
             writer.writerows(self.data)
 
 
@@ -115,7 +111,7 @@ if __name__ == '__main__':
     with BoomLogger() as logger:
         while True:
             try:
-                print(f'{logger.current.ddx:.3f}')
+                print(f'{logger.current.y:.3f}')
                 time.sleep(0.1)
             except KeyboardInterrupt:
                 break
