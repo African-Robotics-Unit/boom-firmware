@@ -11,18 +11,28 @@ import time
 from threading import Thread
 
 
-class BoomData(NamedTuple):
+class Frame(NamedTuple):
     time: float
-    x: float
-    y: float
-    dx: float
-    dy: float
-    ddx: float
-    ddy: float
+    x_enc: float
+    x_pll: float
+    x_kf: float
+    y_enc: float
+    y_pll: float
+    y_kf: float
+    dx_pll: float
+    dx_kf: float
+    dy_pll: float
+    dy_kf: float
+    ddx_imu: float
+    ddx_kf: float
+    ddy_imu: float
+    ddy_kf: float
+    ddz_imu: float
+    temp: int
 
 
 HEADER = bytes([0xAA, 0x55])
-DATAFMT = '<6f'
+DATAFMT = '<16fi'
 
 
 SENSOR_PARAMS = {
@@ -49,27 +59,27 @@ class BoomLogger:
         self.thread = None
         self.isRunning = True
         self.receivingData = False
-        self.data: List[BoomData] = []
+        self.data: List[Frame] = []
         self.filename = filename
     
     @property
     def current(self):
         return self.data[-1]
 
-    def __read(self) -> BoomData:
+    def __read(self) -> Frame:
         self.serial.reset_input_buffer()
         self.serial.read_until(HEADER)
         data_bytes = self.serial.read(struct.calcsize(DATAFMT))
-        x, y, dx, dy, ddx, ddy = struct.unpack(DATAFMT, data_bytes)
-        return BoomData(time.time(), x, y, dx, dy, ddx, ddy)
+        data = struct.unpack(DATAFMT, data_bytes)
+        return Frame(time.time(), *data)
 
  
     # Runs on a separate thread for reading serial data
     def __backgroundThread(self):
         time.sleep(0.1) # wait a bit before starting
         while (self.isRunning):
-            packet = self.__read()
-            self.data.append(packet)
+            frame = self.__read()
+            self.data.append(frame)
             self.receivingData = True
     
     '''
@@ -101,7 +111,7 @@ class BoomLogger:
         print('Writing data to CSV file...')
         with open(self.filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['time[epoch]', 'x[m]', 'y[m]', 'dx[m/s]', 'dy[m/s]', 'ddx[g]', 'ddy[g]'])
+            writer.writerow(['time[epoch]', 'x_enc', 'x_pll', 'x_kf', 'y_enc', 'y_pll', 'y_kf', 'dx_pll', 'dx_kf', 'dy_pll', 'dy_kf', 'ddx_imu', 'ddx_kf', 'ddy_imu', 'ddy_kf', 'ddz_imu', 'temp'])
             writer.writerows(self.data)
 
 
@@ -111,7 +121,7 @@ if __name__ == '__main__':
     with BoomLogger() as logger:
         while True:
             try:
-                print(f'{logger.current.y:.3f}')
+                print(f'{logger.current.y_pll:.4f}')
                 time.sleep(0.1)
             except KeyboardInterrupt:
                 break

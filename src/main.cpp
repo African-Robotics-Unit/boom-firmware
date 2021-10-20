@@ -1,53 +1,71 @@
 #include <Arduino.h>
 #include <Encoder.h>
 #include <IMU.h>
+#include <PLL.h>
+#include <Kalman.h>
 
 #define Serial Serial
 
 // TODO
 // - work out temperature conversion
 
-Encoder pitch(1, 0);
-Encoder yaw(7, 6);
+Encoder pitchEncoder(1, 0);
+Encoder yawEncoder(7, 6);
 
 IntervalTimer pllTimer;
+IntervalTimer kfTimer;
 
 const byte pitchIndexPin = 2;
 const byte ledPin = 13;
+const byte DE = 12;
 
 volatile bool pitchIndexFound = false;
 
+const float dt = 0.002;
 const float yawRadius = 2.558; // pivot to end mounting distance [m]
 const float pitchRadius = 2.475; // pivot to pivot distance [m]
-const uint16_t pitchIndexPos = 744;
+const uint16_t pitchIndexPos = 658; // for calibrating the pitch axis
 const uint8_t gearRatio = 4;
 const uint16_t CPR = 4096; // encoder counts per revolution
-const uint32_t laptopBaud = 115200;
+const uint32_t laptopBaud = 1e6; // [baud]
 
-// PLL estimator stuff
-// https://discourse.odriverobotics.com/t/rotor-encoder-pll-and-velocity/224
-const uint16_t pllFreq = 10000; // [Hz]
-const uint8_t pllBandwidth = 100; // [rad/s]
-const uint8_t pll_kp = 2.0f * pllBandwidth;
-const uint32_t pll_ki = 0.25f * (pll_kp * pll_kp); // critically damped
-float pitch_pos_estimate = 0; // [counts]
-float pitch_vel_estimate = 0; // [counts/s]
-float yaw_pos_estimate = 0; // [counts]
-float yaw_vel_estimate = 0; // [counts/s]
+// global state variables
+float x_enc = 0, y_enc = 0;
+float x_pll = 0, y_pll = 0;
+float x_kf = 0, y_kf = 0;
+float dx_pll = 0, dy_pll = 0;
+float dx_kf = 0, dy_kf = 0;
+float ddx_imu = 0, ddy_imu = 0, ddz_imu = 0;
+float ddx_kf = 0, ddy_kf = 0;
+
+// PLL estimator initialisation
+const float pllFreq = 20000; // [Hz]
+PLL pitchPLL(1.0/pllFreq, 500);
+PLL yawPLL(1.0/pllFreq, 500);
+
+// Kalman Filter initialisation
+const float kfFreq = 1000; // [Hz]
+Matrix<3> x0 = {0, 0, 0};
+KalmanFilter xKF(1.0/pllFreq, x0);
+Matrix<3> y0 = {0.35, 0, 0};
+KalmanFilter yKF(1.0/pllFreq, y0);
 
 elapsedMicros loopTime; // elapsed loop time in microseconds
 IMU imu;
 
 // function declarations
 void sendFloat(float);
-void sendInt(uint32_t);
+void sendInt(int32_t);
 void pitchIndexInterrupt();
-void pllLoop();
+void updatePLL();
+void updateKF();
 float countsToRadians(float);
 
 
 void setup() {
+  pinMode(DE, OUTPUT);
   pinMode(ledPin, OUTPUT);
+  digitalWrite(DE, HIGH); // Enable transmit on RS485 transciever
   digitalWrite(ledPin, LOW);
   pinMode(pitchIndexPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(pitchIndexPin), pitchIndexInterrupt, FALLING);
@@ -56,86 +74,103 @@ void setup() {
 	Serial.begin(laptopBaud);
 	Serial.print("Teensy comms initiated");
   // start IMU
-  // need to make sure boom is not moving...
   digitalWrite(ledPin, HIGH);
-  imu.start();
+  imu.initialise();
   digitalWrite(ledPin, LOW);
   // setup encoders
   while (!pitchIndexFound); // wait for pitch index
   // start PLL estimator
-  pllTimer.begin(pllLoop, 1E6f / pllFreq);
-  pllTimer.priority(0); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
+  pllTimer.begin(updatePLL, 1e6f/pllFreq);
+  pllTimer.priority(1); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
+  kfTimer.begin(updateKF, 1e6f/kfFreq);
+  kfTimer.priority(2);
 }
 
 
 // all serial communication must be done inside the main loop
 void loop() {
-  if (loopTime >= (2000)) { // loop must execute at 500Hz
+  if (loopTime >= (1e6f * dt)) { // 500Hz
     loopTime = 0;
+    // read data from accelerometer when available
+    if (imu.tempAvailable()) { imu.readTemp(); }
+    // calculate boom end pos and vel
+    dx_pll = yawRadius * countsToRadians(yawPLL.velocity); // boom end horizontal speed [m/s]
+    dy_pll = pitchRadius * cos(countsToRadians(pitchPLL.position)) * countsToRadians(pitchPLL.velocity); // boom end vertical speed [m/s]
+    int32_t temp = imu.temperature; // unknown units
+
+    // get and unpack kalman filter data
+    Matrix<3> X = xKF.state();
+    x_kf = X(0), dx_kf = X(1), dx_kf = X(2);
+    Matrix<3> Y = yKF.state();
+    y_kf = Y(0), dy_kf = Y(1), dy_kf = Y(2);
+
     // send header
     Serial.write((uint8_t)0xAA);
     Serial.write((uint8_t)0x55);
-    // calculate boom end pos and vel
-    float x = countsToRadians(yaw_pos_estimate) * yawRadius; // boom end horizontal position [m]
-    float dx = countsToRadians(yaw_vel_estimate) * yawRadius; // boom end horizontal speed [m/s]
-    float y = countsToRadians(pitch_pos_estimate) * pitchRadius; // boom end vertical position [m]
-    float dy = countsToRadians(pitch_vel_estimate) * pitchRadius; // boom end vertical speed [m/s]
-
-    if (imu.accelAvailable()) { imu.readAccel(); }
-    if (imu.tempAvailable()) { imu.readTemp(); }
-    // send data
-    sendFloat(x);
-    sendFloat(y);
-    sendFloat(dx);
-    sendFloat(dy);
-    sendFloat(imu.calcAccel(imu.ax)); // g's
-    sendFloat(imu.calcAccel(imu.ay)); // g's
-    // sendInt(imu.temperature); //
+    // send data frame
+    sendFloat(x_enc);
+    sendFloat(x_pll);
+    sendFloat(x_kf);
+    sendFloat(y_enc);
+    sendFloat(y_pll);
+    sendFloat(y_kf);
+    sendFloat(dx_pll);
+    sendFloat(dx_kf);
+    sendFloat(dy_pll);
+    sendFloat(dy_kf);
+    sendFloat(ddx_imu);
+    sendFloat(ddx_kf);
+    sendFloat(ddy_imu);
+    sendFloat(ddy_kf);
+    sendFloat(ddz_imu);
+    sendInt(temp);
   }
 }
 
 
-// Sends as sequential bytes
 void sendFloat(float data) {
 	Serial.write((uint8_t *)&data, sizeof(data));
 }
 
-
-// Sends as sequential bytes
 void sendInt(int32_t data) {
 	Serial.write((uint8_t *)&data, sizeof(data));
 }
 
-
 // Interrupt handler for when the pitch encoder index is detected
 void pitchIndexInterrupt() {
   pitchIndexFound = true;
-  yaw.write(0);
-  pitch.write(pitchIndexPos);
+  yawEncoder.write(0);
+  pitchEncoder.write(pitchIndexPos);
   digitalWrite(ledPin, HIGH);
   detachInterrupt(digitalPinToInterrupt(pitchIndexPin));
 }
-
 
 // converts encoder counts to an angle in radians
 float countsToRadians(float counts) {
   return (counts / (float)(CPR * gearRatio)) * 2.0f*PI;
 }
 
-
 // PLL loop to estimate encoder position and velocity
 // Runs at frequency defined by 'pllFreq'
-void pllLoop() {
-  float pll_period = 1.0f / pllFreq;
-  // predicted current pos
-  pitch_pos_estimate += pll_period * pitch_vel_estimate;
-  yaw_pos_estimate += pll_period * yaw_vel_estimate;
-  // discrete phase detector
-  float pitch_delta_pos = (float)(pitch.read() - (int32_t)floor(pitch_pos_estimate));
-  float yaw_delta_pos = (float)(yaw.read() - (int32_t)floor(yaw_pos_estimate));
-  // pll feedback
-  pitch_pos_estimate += pll_period * pll_kp * pitch_delta_pos;
-  pitch_vel_estimate += pll_period * pll_ki * pitch_delta_pos;
-  yaw_pos_estimate += pll_period * pll_kp * yaw_delta_pos;
-  yaw_vel_estimate += pll_period * pll_ki * yaw_delta_pos;
+void updatePLL() {
+  pitchPLL.update(pitchEncoder.read());
+  yawPLL.update(yawEncoder.read());
+}
+
+// Runs at 1kHz
+void updateKF() {
+  // get latest acceleration values
+  // IMU ODR is only 952Hz
+  imu.readAcceleration();
+  // assign state data to variables
+  x_enc = yawRadius * countsToRadians(yawEncoder.read());
+  x_pll = yawRadius * countsToRadians(yawPLL.position); // boom end horizontal position [m]
+  y_enc = pitchRadius * sin(countsToRadians(pitchEncoder.read()));
+  y_pll = pitchRadius * sin(countsToRadians(pitchPLL.position)); // boom end vertical position [m]
+  ddx_imu = imu.ddx;
+  ddy_imu = imu.ddy;
+  ddz_imu = imu.ddz;
+  // update kalman filter
+  yKF.update((Matrix<2>){y_pll, ddy_imu});
+  xKF.update((Matrix<2>){x_pll, ddx_imu});
 }

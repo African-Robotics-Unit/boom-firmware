@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # TODO
 # - estimate velocity with dx/dt to check PLL estimator
 
-pll_bandwidth = 100 # rad/s
+pll_bandwidth = 1000 # rad/s
 
 boom_data = pd.read_csv(f'pll_data/100k-{pll_bandwidth}.csv')
 
@@ -23,8 +23,8 @@ fig.suptitle(f'PLL {pll_bandwidth} rad/s bandwidth')
 
 
 ax[0].set_title(f'Position')
-ax[0].plot(boom_data['time[epoch]'], boom_data['pitch[counts]'], label='y actual')
-ax[0].plot(boom_data['time[epoch]'], boom_data['yaw[counts]'], label='x actual')
+ax[0].step(boom_data['time[epoch]'], boom_data['pitch[counts]'], label='y actual', where='post')
+ax[0].step(boom_data['time[epoch]'], boom_data['yaw[counts]'], label='x actual', where='post')
 ax[0].plot(boom_data['time[epoch]'], boom_data['y[m]'], label='y estimate')
 ax[0].plot(boom_data['time[epoch]'], boom_data['x[m]'], label='x estimate')
 ax[0].set(xlabel='time [s]', ylabel='position [m]')
