@@ -10,10 +10,9 @@
 // - work out temperature conversion
 
 Encoder pitchEncoder(1, 0);
-Encoder yawEncoder(7, 6);
+Encoder yawEncoder(6, 7); // CW direction positive (based on IMU z axis direction)
 
 IntervalTimer pllTimer;
-IntervalTimer kfTimer;
 
 const byte pitchIndexPin = 2;
 const byte ledPin = 13;
@@ -21,7 +20,7 @@ const byte DE = 12;
 
 volatile bool pitchIndexFound = false;
 
-const float dt = 0.002;
+const float dt = 0.001;
 const float yawRadius = 2.558; // pivot to end mounting distance [m]
 const float pitchRadius = 2.475; // pivot to pivot distance [m]
 const uint16_t pitchIndexPos = 658; // for calibrating the pitch axis
@@ -44,11 +43,10 @@ PLL pitchPLL(1.0/pllFreq, 500);
 PLL yawPLL(1.0/pllFreq, 500);
 
 // Kalman Filter initialisation
-const float kfFreq = 1000; // [Hz]
-Matrix<3> x0 = {0, 0, 0};
-KalmanFilter xKF(1.0/pllFreq, x0);
-Matrix<3> y0 = {0.35, 0, 0};
-KalmanFilter yKF(1.0/pllFreq, y0);
+Matrix<3> X_initial = {0, 0, 0};
+KalmanFilter xKF(dt, X_initial);
+Matrix<3> Y_initial = {0.35, 0, 0};
+KalmanFilter yKF(dt, Y_initial);
 
 elapsedMicros loopTime; // elapsed loop time in microseconds
 IMU imu;
@@ -58,7 +56,6 @@ void sendFloat(float);
 void sendInt(int32_t);
 void pitchIndexInterrupt();
 void updatePLL();
-void updateKF();
 float countsToRadians(float);
 
 
@@ -81,28 +78,38 @@ void setup() {
   while (!pitchIndexFound); // wait for pitch index
   // start PLL estimator
   pllTimer.begin(updatePLL, 1e6f/pllFreq);
-  pllTimer.priority(1); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
-  kfTimer.begin(updateKF, 1e6f/kfFreq);
-  kfTimer.priority(2);
+  pllTimer.priority(0); // Highest priority. USB defaults to 112, the hardware serial ports default to 64, and systick defaults to 0.
 }
 
 
 // all serial communication must be done inside the main loop
 void loop() {
-  if (loopTime >= (1e6f * dt)) { // 500Hz
+  if (loopTime >= (1e6f * dt)) {
     loopTime = 0;
     // read data from accelerometer when available
+    if (imu.accelAvailable()) { imu.readAcceleration(); }
     if (imu.tempAvailable()) { imu.readTemp(); }
     // calculate boom end pos and vel
+    x_enc = yawRadius * countsToRadians(yawEncoder.read());
+    x_pll = yawRadius * countsToRadians(yawPLL.position); // boom end horizontal position [m]
+    y_enc = pitchRadius * sin(countsToRadians(pitchEncoder.read()));
+    y_pll = pitchRadius * sin(countsToRadians(pitchPLL.position)); // boom end vertical position [m]
     dx_pll = yawRadius * countsToRadians(yawPLL.velocity); // boom end horizontal speed [m/s]
     dy_pll = pitchRadius * cos(countsToRadians(pitchPLL.position)) * countsToRadians(pitchPLL.velocity); // boom end vertical speed [m/s]
+    ddx_imu = imu.ddx;
+    ddy_imu = imu.ddy;
+    ddz_imu = imu.ddz;
     int32_t temp = imu.temperature; // unknown units
+
+    // update kalman filter
+    yKF.update((Matrix<2>){y_enc, ddy_imu});
+    xKF.update((Matrix<2>){x_enc, ddx_imu});
 
     // get and unpack kalman filter data
     Matrix<3> X = xKF.state();
-    x_kf = X(0), dx_kf = X(1), dx_kf = X(2);
+    x_kf = X(0), dx_kf = X(1), ddx_kf = X(2);
     Matrix<3> Y = yKF.state();
-    y_kf = Y(0), dy_kf = Y(1), dy_kf = Y(2);
+    y_kf = Y(0), dy_kf = Y(1), ddy_kf = Y(2);
 
     // send header
     Serial.write((uint8_t)0xAA);
@@ -155,22 +162,4 @@ float countsToRadians(float counts) {
 void updatePLL() {
   pitchPLL.update(pitchEncoder.read());
   yawPLL.update(yawEncoder.read());
-}
-
-// Runs at 1kHz
-void updateKF() {
-  // get latest acceleration values
-  // IMU ODR is only 952Hz
-  imu.readAcceleration();
-  // assign state data to variables
-  x_enc = yawRadius * countsToRadians(yawEncoder.read());
-  x_pll = yawRadius * countsToRadians(yawPLL.position); // boom end horizontal position [m]
-  y_enc = pitchRadius * sin(countsToRadians(pitchEncoder.read()));
-  y_pll = pitchRadius * sin(countsToRadians(pitchPLL.position)); // boom end vertical position [m]
-  ddx_imu = imu.ddx;
-  ddy_imu = imu.ddy;
-  ddz_imu = imu.ddz;
-  // update kalman filter
-  yKF.update((Matrix<2>){y_pll, ddy_imu});
-  xKF.update((Matrix<2>){x_pll, ddx_imu});
 }

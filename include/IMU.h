@@ -9,34 +9,8 @@ class IMU: public LSM9DS1 {
 
     float ddx, ddy, ddz; // Acceleration readings in boom coordinate frame [m/s^2]
 
-    // custom calibrate function. Modified version of the one in LSM9DS1 library
-    void customCalibrate() {
-        uint8_t samples = 0;
-        int32_t aBiasRawTemp[3] = {0, 0, 0};
-        
-        // Turn on FIFO and set threshold to 32 (max) samples
-        enableFIFO(true);
-        setFIFO(FIFO_THS, 0x1F);
-        while (samples < 0x1F) {
-            samples = (xgReadByte(FIFO_SRC) & 0x3F); // Read number of stored samples
-        }
-        for(int ii=0; ii < samples ; ii++) { // Read the gyro data stored in the FIFO
-            readAccel();
-            aBiasRawTemp[0] += ax;
-            aBiasRawTemp[1] += ay;
-            aBiasRawTemp[2] += az;
-        }  
-        for (int ii = 0; ii < 3; ii++) {
-            aBiasRaw[ii] = aBiasRawTemp[ii] / samples;
-            // aBias[ii] = calcAccel(aBiasRaw[ii]); // not sure if this is needed
-        }
-        enableFIFO(false);
-        setFIFO(FIFO_OFF, 0x00);
-        _autoCalc = true;
-    }
-
     // Accelerometer must be stationary when this is run
-    void customCalibrate2(int samples) {
+    void customCalibrate(int samples) {
         for (int i=0 ; i<samples ; i++) {
             while (!accelAvailable()); // wait for acceleration values
             readAccel();
@@ -137,8 +111,7 @@ class IMU: public LSM9DS1 {
         sleepGyro(true);
         
         delay(100);
-        // customCalibrate();
-        customCalibrate2(1000);
+        customCalibrate(1000);
         delay(100);
     }
 

@@ -18,9 +18,9 @@ public:
     Matrix<3> state() { return x; };
 
 private:
-    static const int n = 3;
-    static const int m = 2;
-
+    static const int n = 3; // states
+    static const int m = 2; // measurements
+    
     Matrix<n> x; // predicted state
     Matrix<n,n> P; // state covariance
     Matrix<n,n> F; // process function

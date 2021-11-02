@@ -32,7 +32,7 @@ class Frame(NamedTuple):
 
 
 HEADER = bytes([0xAA, 0x55])
-DATAFMT = '<16fi'
+DATAFMT = '<15fi'
 
 
 SENSOR_PARAMS = {
@@ -111,7 +111,7 @@ class BoomLogger:
         print('Writing data to CSV file...')
         with open(self.filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['time[epoch]', 'x_enc', 'x_pll', 'x_kf', 'y_enc', 'y_pll', 'y_kf', 'dx_pll', 'dx_kf', 'dy_pll', 'dy_kf', 'ddx_imu', 'ddx_kf', 'ddy_imu', 'ddy_kf', 'ddz_imu', 'temp'])
+            writer.writerow(self.data[0]._fields)
             writer.writerows(self.data)
 
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     with BoomLogger() as logger:
         while True:
             try:
-                print(f'{logger.current.y_pll:.4f}')
+                print(f'{logger.current.y_enc:.4f}')
                 time.sleep(0.1)
             except KeyboardInterrupt:
                 break
