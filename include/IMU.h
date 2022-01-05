@@ -8,6 +8,7 @@ class IMU: public LSM9DS1 {
     public :
 
     float ddx, ddy, ddz; // Acceleration readings in boom coordinate frame [m/s^2]
+    float temperatureCelcius;
 
     // Accelerometer must be stationary when this is run
     void customCalibrate(int samples) {
@@ -28,17 +29,21 @@ class IMU: public LSM9DS1 {
     }
 
     void readAcceleration() {
-        readAccel();
+        if (accelAvailable()) { readAccel(); }
         // scale and subtract offset
         float ddx_s = calcAccel(ax) * 9.81;
         float ddy_s = calcAccel(ay) * 9.81;
         float ddz_s = calcAccel(az) * 9.81;
         // rotate to world frame
         ddy = ddx_s*cos(-phiOffset) - ddy_s*sin(-phiOffset);
-        // ddy = ddx_s;
         ddz = ddy_s*cos(-phiOffset) + ddx_s*sin(-phiOffset);
-        // ddz = ddy_s;
         ddx = ddz_s;
+    }
+
+    void readTemperature() {
+        if (tempAvailable()) { readTemp(); }
+        // 0 @ 25°C
+        temperatureCelcius = (((float_t)temperature / 16.0f) + 25.0f);
     }
 
 
