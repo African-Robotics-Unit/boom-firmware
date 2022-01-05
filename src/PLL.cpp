@@ -9,6 +9,7 @@ PLL::PLL(float dt, float bandwidth) {
     this->velocity = 0;
 }
 
+
 // Must be called at a fixed frequency
 // https://discourse.odriverobotics.com/t/rotor-encoder-pll-and-velocity/224
 void PLL::update(int32_t encoder_pos) {

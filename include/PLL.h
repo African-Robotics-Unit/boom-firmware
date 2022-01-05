@@ -5,14 +5,11 @@
 class PLL {
 
 public:
-    // estimated position
-    float position;
-    // estimated velocity
-    float velocity;
+    float position; // estimated position
+    float velocity; // estimated velocity
     
-    PLL(float dt, float bandwidth);
-    
-    void update(int32_t encoder_pos);
+    PLL(float, float);
+    void update(int32_t);
 
 private:
     float dt;
