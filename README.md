@@ -10,17 +10,18 @@ Data frames are sent at 1kHz.
 | A (+) | Green | 5a
 | B (-) | Yellow | 6a
 
-|                | bytes | type  |
+## Data Frame
+| description    | bits | type  |
 | -------------- | ----- | ----- |
 | header         | 16    |       |
-| x position     | 32    | float |
-| y position     | 32    | float |
-| ϕ position     | 32    | float |
-| x velocity     | 32    | float |
-| y velocity     | 32    | float |
-| ϕ velocity     | 32    | float |
-| x acceleration | 32    | float |
-| y acceleration | 32    | float |
+| x position     | 32    | IEEE 754 Float |
+| y position     | 32    | IEEE 754 Float |
+| ϕ position     | 32    | IEEE 754 Float |
+| x velocity     | 32    | IEEE 754 Float |
+| y velocity     | 32    | IEEE 754 Float |
+| ϕ velocity     | 32    | IEEE 754 Float |
+| x acceleration | 32    | IEEE 754 Float |
+| y acceleration | 32    | IEEE 754 Float |
 
 # Sensors
 
@@ -53,6 +54,8 @@ The roll axis encoder is optional. It requires indexing at startup if it is conn
 
 ## IMU
 [ST LSM9DS1 IMU](https://www.st.com/resource/en/datasheet/lsm9ds1.pdf)
+
+The IMU is calibrated at startup to ensure the y axis is always vertical even if the pivoting end is not tensioned to be horizontal.
 
 | Signal | Wire | Teensy pin |
 | ------- | ------- | ------- |
