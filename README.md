@@ -3,7 +3,7 @@ The boom uses RS485 at 1M baud to send data to the Speedgoat.
 Data frames are sent at 1kHz.
 
 ## Connection
-| Signal | Wire | IO393 |
+| Signal | Wire | IO393 pin |
 | ------- | ------- | ------- |
 | 5V | Red | 2b |
 | 0V | Blue | 1b |
@@ -15,20 +15,12 @@ Data frames are sent at 1kHz.
 | header         | 16    |       |
 | x position     | 32    | float |
 | y position     | 32    | float |
-| ϕ position     | 32
+| ϕ position     | 32    | float |
 | x velocity     | 32    | float |
 | y velocity     | 32    | float |
-| ϕ velocity     | 32
+| ϕ velocity     | 32    | float |
 | x acceleration | 32    | float |
 | y acceleration | 32    | float |
-
-## Data frame
-
-| 1 - 2 [2] | 3 - 6 [4] | 7 - 10 [4] | 11 - 14 [4] | 15 - 18 [4] | 19 - 22 [4] | 23 - 26 [4] |
-| --------- | --------- | ---------- | ---------- | ---------- | ----------- | ----------- |
-| 0xAA 0x55 |   x pos   | y pos      | x vel      | y vel      | x acc       | y acc       |
-
-
 
 # Sensors
 
