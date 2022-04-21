@@ -1,3 +1,6 @@
+# Usage
+Connect the board to the Speedgoat. The orange LED on the Teensy will come on for about 0.5 seconds and then turn off again. Do not move the boom during this time as this is the IMU being calibrated. Once the LED is off, lift the boom arm and the rotate the pivoting end (only if installed) past their encoder index points. Once the encoders have been indexed the orange LED will remain on. This means the boom is ready and is currently sending state data to the Speedgoat.
+
 # Communication
 The boom uses RS485 at 1M baud to send data to the Speedgoat.
 Data frames are sent at 1kHz.
@@ -55,7 +58,7 @@ The roll axis encoder is optional. It requires indexing at startup if it is conn
 ## IMU
 [ST LSM9DS1 IMU](https://www.st.com/resource/en/datasheet/lsm9ds1.pdf)
 
-The IMU is calibrated at startup to ensure the y axis is always vertical even if the pivoting end is not tensioned to be horizontal.
+The IMU is calibrated at startup to ensure the y axis is always oriented vertically even if the pivoting end is not horizontal.
 
 | Signal | Wire | Teensy pin |
 | ------- | ------- | ------- |
