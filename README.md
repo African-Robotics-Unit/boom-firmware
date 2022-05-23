@@ -1,47 +1,30 @@
-# Startup procedure
-
-
-# Indexing procedure
-set the `pitchIndexPos` to 0
-get encoder value at known height/angle
-calculate encoder offset
-
-# Microcontroller
-The micro has interrupts on 3 encoders, is communicating with an IMU over I2C, is running a 20kHz PLL, and two Kalman filters. Only the Teensy 4.0 can run fast enough to have the main loop execute at 1kHz.
+# Usage
+Connect the board to the Speedgoat. The orange LED on the Teensy will come on for about 0.5 seconds and then turn off again. Do not move the boom during this time as this is the IMU being calibrated. Once the LED is off, lift the boom arm and the rotate the pivoting end (only if installed) past their encoder index points. Once the encoders have been indexed the orange LED will remain on. This means the boom is ready and is currently sending state data to the Speedgoat.
 
 # Communication
 The boom uses RS485 at 1M baud to send data to the Speedgoat.
 Data frames are sent at 1kHz.
 
 ## Connection
-| Signal | Wire | IO393 |
+| Signal | Wire | IO393 pin |
 | ------- | ------- | ------- |
 | 5V | Red | 2b |
 | 0V | Blue | 1b |
 | A (+) | Green | 5a
 | B (-) | Yellow | 6a
 
-|                | bytes | type  |
+## Data Frame
+| description    | bits | type  |
 | -------------- | ----- | ----- |
 | header         | 16    |       |
-| x position     | 32    | float |
-| y position     | 32    | float |
-| ϕ position     | 32    | float |
-| x velocity     | 32    | float |
-| y velocity     | 32    | float |
-| ϕ velocity     | 32    | float |
-| x acceleration | 32    | float |
-| y acceleration | 32    | float |
-| z acceleration | 32    | float |
-| temperature    | 32    | float |
-
-## Data frame
-
-| 1 - 2 [2] | 3 - 6 [4] | 7 - 10 [4] | 11 - 14 [4] | 15 - 18 [4] | 19 - 22 [4] | 23 - 26 [4] |
-| --------- | --------- | ---------- | ---------- | ---------- | ----------- | ----------- |
-| 0xAA 0x55 |   x pos   | y pos      | x vel      | y vel      | x acc       | y acc       |
-
-
+| x position     | 32    | IEEE 754 Float |
+| y position     | 32    | IEEE 754 Float |
+| ϕ position     | 32    | IEEE 754 Float |
+| x velocity     | 32    | IEEE 754 Float |
+| y velocity     | 32    | IEEE 754 Float |
+| ϕ velocity     | 32    | IEEE 754 Float |
+| x acceleration | 32    | IEEE 754 Float |
+| y acceleration | 32    | IEEE 754 Float |
 
 # Sensors
 
@@ -76,6 +59,8 @@ The Teensy 4.0 is only 3.3V tollerant so this encoder is powered with 3.3V rathe
 
 ## IMU
 [ST LSM9DS1 IMU](https://www.st.com/resource/en/datasheet/lsm9ds1.pdf)
+
+The IMU is calibrated at startup to ensure the y axis is always oriented vertically even if the pivoting end is not horizontal.
 
 | Signal | Wire | Teensy pin |
 | ------- | ------- | ------- |
