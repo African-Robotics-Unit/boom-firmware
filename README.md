@@ -1,3 +1,14 @@
+# Startup procedure
+
+
+# Indexing procedure
+set the `pitchIndexPos` to 0
+get encoder value at known height/angle
+calculate encoder offset
+
+# Microcontroller
+The micro has interrupts on 3 encoders, is communicating with an IMU over I2C, is running a 20kHz PLL, and two Kalman filters. Only the Teensy 4.0 can run fast enough to have the main loop execute at 1kHz.
+
 # Communication
 The boom uses RS485 at 1M baud to send data to the Speedgoat.
 Data frames are sent at 1kHz.
@@ -15,12 +26,14 @@ Data frames are sent at 1kHz.
 | header         | 16    |       |
 | x position     | 32    | float |
 | y position     | 32    | float |
-| ϕ position     | 32
+| ϕ position     | 32    | float |
 | x velocity     | 32    | float |
 | y velocity     | 32    | float |
-| ϕ velocity     | 32
+| ϕ velocity     | 32    | float |
 | x acceleration | 32    | float |
 | y acceleration | 32    | float |
+| z acceleration | 32    | float |
+| temperature    | 32    | float |
 
 ## Data frame
 
@@ -51,6 +64,8 @@ The yaw axis is zeroed at startup.
 
 The roll axis encoder is optional. It requires indexing at startup if it is connected. If it is disconnected the Teensy will just send its constant index offset value.
 
+The Teensy 4.0 is only 3.3V tollerant so this encoder is powered with 3.3V rather than 5V. It seems to work fine.
+
 | Signal | Wire | Teensy pin |
 | ------- | ------- | ------- |
 | 5V | Red | - |
@@ -68,3 +83,8 @@ The roll axis encoder is optional. It requires indexing at startup if it is conn
 | 0V | Blue | - |
 | SDA | Green | 18 |
 | SCL | Yellow | 19 |
+
+
+# PLL Velocity Estimator
+A PLL is used to compute a more accurate velocity estimate without timers on the signal lines. The PLL runs in an `IntervalTimer` with a priority of 1 to ensure consistent execution at 20kHz.
+
