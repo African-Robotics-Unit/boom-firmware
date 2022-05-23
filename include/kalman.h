@@ -5,25 +5,26 @@ using namespace BLA;
 class KalmanFilter {
 
 public:
-    KalmanFilter(float dt, Matrix<3> x0);
+    KalmanFilter(float dt, float x0, float dx0);
 
     /**
      * Update the estimated state based on measured values
      */
-    void update(const Matrix<2>& z);
+    void update(float enc, float imu);
 
     /**
      * Return the current state
      */
-    Matrix<3> state() { return x; };
+    Matrix<2> state() { return x; };
 
 private:
-    static const int n = 3; // states
-    static const int m = 2; // measurements
+    static const int n = 2; // states
+    static const int m = 1; // measurements
     
     Matrix<n> x; // predicted state
     Matrix<n,n> P; // state covariance
     Matrix<n,n> F; // process function
+    Matrix<n,1> B; // control function
     Matrix<n> Gamma;
     Matrix<n,n> Q; // process covariance
     Matrix<m,n> H; // measurement function

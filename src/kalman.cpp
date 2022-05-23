@@ -1,28 +1,27 @@
 #include <kalman.h>
 
 
-KalmanFilter::KalmanFilter(float dt, Matrix<3> x0) {
+KalmanFilter::KalmanFilter(float dt, float x0, float dx0) {
     dt = dt;
-    x = x0;
-    P = {   1, 0, 0,
-            0, 1, 0,
-            0, 0, 1 }; 
-    F = {   1, dt, 0.5*dt*dt,
-            0, 1, dt,
-            0, 0, 1  };
-    Gamma = { 0.5*dt*dt, dt, 1 };
-    float j = 5; // jerk
-    Q = Gamma * j*j*dt*dt * ~Gamma; //fix this
-    H = {   1, 0, 0,
-            0, 0, 1 };
-    R = {   1e-9, 0,
-            0, 2e-3 };
+	x = {x0, dx0};
+    P = {   1, 0,
+            0, 1	}; 
+    F = {   1, dt,
+            0, 1	};
+	B = {	0.5*dt*dt,
+			dt	};
+    Gamma = { dt, 1 };
+    Q = Gamma * 2e-4 * ~Gamma;
+	H = {   1, 0	};
+    R = {   1e-4	};
 }
 
 
-void KalmanFilter::update(const Matrix<2>& z) {
+void KalmanFilter::update(float enc, float imu) {
+	Matrix<1> z = {enc};
+	Matrix<1> u = {imu};
     // predict
-    x = F * x;
+    x = F * x + B * u;
     P = F * P * ~F + Q;
     // update
     S = H * P * ~H + R;
