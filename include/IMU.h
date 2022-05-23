@@ -37,12 +37,12 @@ class IMU: public LSM9DS1 {
         // rotate to world frame
         ddy = ddx_s*cos(-phiOffset) - ddy_s*sin(-phiOffset);
         ddz = ddy_s*cos(-phiOffset) + ddx_s*sin(-phiOffset);
-        ddx = ddz_s;
+        ddx = -ddz_s;
     }
 
     void readTemperature() {
         if (tempAvailable()) { readTemp(); }
-        // 0 @ 25°C
+        // 0b0 @ 25°C
         temperatureCelcius = (((float_t)temperature / 16.0f) + 25.0f);
     }
 
