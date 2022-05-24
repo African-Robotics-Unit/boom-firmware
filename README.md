@@ -6,7 +6,7 @@ Connect the board to the Speedgoat. The orange LED on the Teensy will come on fo
 
 ## Connections
 <p align="center">
-<img src="https://github.com/African-Robotics-Unit/boom-firmware/blob/main/boom_board.png" width="500">
+<img src="https://github.com/African-Robotics-Unit/boom-firmware/blob/main/boom_board.jpg" width="500">
 </p>
 
 ## Communication
