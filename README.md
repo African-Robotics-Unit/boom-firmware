@@ -8,7 +8,7 @@ Connect the board to the Speedgoat. The orange LED on the Teensy will come on fo
 The boom uses RS485 at 1M baud to send data to the Speedgoat.
 Data frames are sent at 1kHz.
 
-### Connection
+### Speedgoat RS485 Connection
 | Signal | Wire | IO393 pin |
 | ------- | ------- | ------- |
 | 5V | Red | 2b |
