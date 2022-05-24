@@ -24,7 +24,7 @@ Data frames are sent at 1kHz.
 ### Data Frame
 | description    | bits | type  |
 | -------------- | ----- | ----- |
-| header         | 16    |       |
+| header         | 16    | 0xAA55         |
 | x position     | 32    | IEEE 754 Float |
 | y position     | 32    | IEEE 754 Float |
 | ϕ position     | 32    | IEEE 754 Float |
