@@ -4,6 +4,11 @@ This firmware runs on the boom Teensy 4.0 and is responsible for estimating the 
 ## Usage
 Connect the board to the Speedgoat. The orange LED on the Teensy will come on for about 0.5 seconds and then turn off again. Do not move the boom during this time as this is the IMU being calibrated. Once the LED is off, lift the boom arm and the rotate the pivoting end (only if installed) past their encoder index points. Once the encoders have been indexed the orange LED will remain on. This means the boom is ready and is currently sending state data to the Speedgoat.
 
+## Connections
+<p align="center">
+<img src="https://github.com/African-Robotics-Unit/boom-firmware/blob/main/boom_board.png" width="500">
+</p>
+
 ## Communication
 The boom uses RS485 at 1M baud to send data to the Speedgoat.
 Data frames are sent at 1kHz.
