@@ -80,7 +80,8 @@ The IMU is calibrated at startup to ensure the y axis is always oriented vertica
 | SDA | Green | 18 |
 | SCL | Yellow | 19 |
 
+## IMU Calibration
+The IMU on the boom is calibrated on startup. This involves first finding the direction of the gravity vector and rotating the IMU frame so it aligns with the world frame. This is necessary as the boom tensioning cables do not guarantee that the end of the boom will be level with the ground, they only ensure that the angle it is set at remains constant. Once the orientation of the IMU has been saved, all of the axes are zeroed using the average from 1000 readings which takes approximately 0.5 seconds.
 
 ## PLL Velocity Estimator
 A PLL is used to compute a more accurate velocity estimate without timers on the signal lines. The PLL runs in an `IntervalTimer` with a priority of 1 to ensure consistent execution at 20kHz.
-
