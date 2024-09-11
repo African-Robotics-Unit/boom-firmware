@@ -11,7 +11,7 @@ KalmanFilter::KalmanFilter(float dt, float x0, float dx0) {
 	B = {	0.5*dt*dt,
 			dt	};
     Gamma = { dt, 1 };
-    Q = Gamma * 2e-4 * ~Gamma;
+    Q = Gamma * (float)2e-4 * ~Gamma;
 	H = {   1, 0	};
     R = {   1e-4	};
 }
